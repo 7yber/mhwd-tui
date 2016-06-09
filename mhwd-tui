@@ -5,6 +5,7 @@ BLUE='\e[44m'
 ORANGE='\e[46m'
 NC='\e[0m'
 trap 'rm $HOME/{.installed_kernels,.available_kernels}' EXIT
+
 in_array() {
     local haystack=${1}[@]
     local needle=${2}
@@ -16,19 +17,27 @@ in_array() {
     return 1
 }
 
-function install_kernel {
-PS3="which kernel do you wish to install? (press ctrl+d to preceed, ctrl+c to cancel): "
-# Gather the results in an array.
-kernels=($(grep -v -f .installed_kernels .available_kernels) "proceed" "cancel")
+function get_current_inst_kernel {
+	currentlyinstkernel=$(grep -v -f .installed_kernels)
+	echo "$currentlyinstkernel"
+}
 
+function get_current_running_kernel {
+	currentlyrunningkernel=$(grep -v -f .running_kernel)
+	echo "$currentlyrunningkernel"
+}
+
+function install_kernel {
+current_kernel=$(get_current_inst_kernel)
+echo -e "Currently installed kernel: $current_kernel"
+PS3="which kernel do you wish to install? (press ctrl+c to cancel): "
+# Gather the results in an array.
+kernels=($(grep -v -f .installed_kernels .available_kernels) "cancel")
 select pick in "${kernels[@]}"
 do
 	case $pick in
-		proceed)
-			break
-			;;
 		cancel)
-			exit
+			break
 			;;		
 		*)	if in_array picks $pick; then
 					picks=($(printf -- '%s\n' "${picks[@]}" | grep -v $pick));	
@@ -39,24 +48,26 @@ do
 			;;		
 	esac
 done
-
 if [[ $picks ]]; then
-    printf 'Installing %s\n' "${picks[*]}"
-    sudo mhwd-kernel -i "${picks[@]}"
+    if [ "$picks" == "$current_kernel" ]; then
+    	STATUSVAR=1
+    else
+    	printf 'Installing %s\n' "${picks[*]}"
+    	sudo mhwd-kernel -i "${picks[@]}"
+    	STATUSVAR=$?
+    fi
 fi
 }
 
 function remove_kernel {
-PS3="which kernel do you wish to remove? (press ctrl+d to preceed, ctrl+c to cancel): "
+current_kernel=$(get_current_running_kernel)
+echo -e "Currently running kernel: $current_kernel"
+PS3="which kernel do you wish to remove? (press ctrl+c to cancel): "
 # Gather the results in an array.
-kernels=($(grep -v -f .running_kernel .installed_kernels) "proceed" "cancel")
-
+kernels=($(grep -v -f .running_kernel .installed_kernels) "cancel")
 select pick in "${kernels[@]}"
 do
 	case $pick in
-		proceed)
-			break
-			;;
 		cancel)
 			exit
 			;;		
@@ -73,6 +84,7 @@ done
 if [[ $picks ]]; then
     printf 'Removing %s\n' "${picks[*]}"
     sudo mhwd-kernel -r "${picks[@]}"
+    STATUSVAR=$?
 fi
 }
 
