@@ -29,7 +29,7 @@ function get_current_running_kernel {
 
 function install_kernel {
 current_kernel=$(get_current_inst_kernel)
-echo -e "Currently installed kernel: $current_kernel"
+echo -e "Currently installed kernel(s): $current_kernel"
 PS3="which kernel do you wish to install? (press ctrl+c to cancel): "
 # Gather the results in an array.
 kernels=($(grep -v -f .installed_kernels .available_kernels) "cancel")
