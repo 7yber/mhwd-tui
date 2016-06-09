@@ -28,6 +28,7 @@ function get_current_running_kernel {
 }
 
 function install_kernel {
+CANCELSTATUS=0
 current_kernel=$(get_current_inst_kernel)
 echo -e "Currently installed kernel(s): $current_kernel"
 PS3="which kernel do you wish to install? (press ctrl+c to cancel): "
@@ -37,6 +38,7 @@ select pick in "${kernels[@]}"
 do
 	case $pick in
 		cancel)
+			CANCELSTATUS=1
 			break
 			;;		
 		*)	if in_array picks $pick; then
@@ -48,18 +50,19 @@ do
 			;;		
 	esac
 done
+if [ $CANCELSTATUS -eq 1 ]; then
+    return 1
+fi
 if [[ $picks ]]; then
-    if [ "$picks" == "$current_kernel" ]; then
-    	STATUSVAR=1
-    else
     	printf 'Installing %s\n' "${picks[*]}"
     	sudo mhwd-kernel -i "${picks[@]}"
     	STATUSVAR=$?
-    fi
 fi
+return $STATUSVAR
 }
 
 function remove_kernel {
+CANCELSTATUS=0
 current_kernel=$(get_current_running_kernel)
 echo -e "Currently running kernel: $current_kernel"
 PS3="which kernel do you wish to remove? (press ctrl+c to cancel): "
@@ -69,7 +72,8 @@ select pick in "${kernels[@]}"
 do
 	case $pick in
 		cancel)
-			exit
+			CANCELSTATUS=1
+			break
 			;;		
 		*)	if in_array picks $pick; then
 					picks=($(printf -- '%s\n' "${picks[@]}" | grep -v $pick));	
@@ -80,12 +84,15 @@ do
 			;;		
 	esac
 done
-
+if [ $CANCELSTATUS -eq 1 ]; then
+    return 1
+fi
 if [[ $picks ]]; then
     printf 'Removing %s\n' "${picks[*]}"
     sudo mhwd-kernel -r "${picks[@]}"
     STATUSVAR=$?
 fi
+return $STATUSVAR
 }
 
 mhwd-kernel -li | awk 'NR==1 {print $4}' | tr -d '()' > .running_kernel
